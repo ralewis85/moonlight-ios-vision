@@ -143,14 +143,13 @@ static const float POLL_RATE = 2.0f; // Poll every 2 seconds
 }
 
 - (BOOL) checkResponse:(ServerInfoResponse*)response {
-    
+
     if ([response isStatusOk]) {
-        return YES;
-        // Force yes because apple's .local finding messes up network discovery on vision os
+        // UUID validation is critical to prevent duplicates and pairing state corruption
         if ((_host.uuid == nil || [[response getStringTag:TAG_UNIQUE_ID] isEqualToString:_host.uuid])) {
             return YES;
         } else {
-            Log(LOG_I, @"Received response from incorrect host: %@ but ignoring the expected: %@", [response getStringTag:TAG_UNIQUE_ID], _host.uuid);
+            Log(LOG_I, @"Received response from incorrect host: %@ but expected: %@", [response getStringTag:TAG_UNIQUE_ID], _host.uuid);
         }
     }
     return NO;
