@@ -74,8 +74,14 @@ public class TemporaryHost: NSObject {
 
         self.serverCodecModeSupport = host.serverCodecModeSupport
         self.serverCert = host.serverCert
-        self.pairState = (host.serverCert != nil) ? PairState(rawValue: host.pairState as! Int32)! : PairState.unpaired
 
+        // Safely handle pairState from Core Data, defaulting to .unknown for nil or invalid values
+        if let pairStateValue = host.pairState as? Int32,
+           let validPairState = PairState(rawValue: pairStateValue) {
+            self.pairState = validPairState
+        } else {
+            self.pairState = .unknown
+        }
 
         // Older clients stored a non-URL-escaped IPv6 string. Try to detect that and fix it up.
         if self.ipv6Address != nil && self.ipv6Address!.contains("[") {
