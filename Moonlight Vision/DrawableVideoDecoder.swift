@@ -272,17 +272,18 @@ class DrawableVideoDecoder: NSObject, AnyVideoDecoderRenderer {
     }
 
     func setupLowLevelTexture() {
-        DispatchQueue.main.sync {
-            if videoWidth == 0 || videoHeight == 0 {
-                print("Tried to set up client texture without defined dimensions (\(videoWidth), \(videoHeight)) - skipping")
+        // Prevent deadlock by checking if already on main thread
+        let setupBlock = {
+            if self.videoWidth == 0 || self.videoHeight == 0 {
+                print("Tried to set up client texture without defined dimensions (\(self.videoWidth), \(self.videoHeight)) - skipping")
                 return
             }
 
             self.drawableQueue = {
                 let descriptor = TextureResource.DrawableQueue.Descriptor(
-                    pixelFormat: metalFormat,
-                    width: Int(videoWidth),
-                    height: Int(videoHeight),
+                    pixelFormat: self.metalFormat,
+                    width: Int(self.videoWidth),
+                    height: Int(self.videoHeight),
                     usage: [.renderTarget], // .renderTarget only, so that we get framebuffer compression
                     mipmapsMode: .allocateAll // shinyquagsire23: Wasteful bc we probably only need like 2, but we don't have a choice here.
                 )
@@ -295,9 +296,16 @@ class DrawableVideoDecoder: NSObject, AnyVideoDecoderRenderer {
                 }
             }()
 
-            region = MTLRegionMake2D(0, 0, videoWidth, videoHeight)
+            self.region = MTLRegionMake2D(0, 0, self.videoWidth, self.videoHeight)
 
-            self.callbackToRender(self.drawableQueue!, (videoWidth, videoHeight))
+            self.callbackToRender(self.drawableQueue!, (self.videoWidth, self.videoHeight))
+        }
+
+        // Execute on main thread, avoiding deadlock
+        if Thread.isMainThread {
+            setupBlock()
+        } else {
+            DispatchQueue.main.sync(execute: setupBlock)
         }
     }
 
